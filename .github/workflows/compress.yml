@@ -26,22 +26,30 @@ jobs:
       - name: Install compression tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y jpegoptim pngquant optipng
+          sudo apt-get install -y webp
 
-      - name: Compress JPEGs
+      - name: Convert to WebP and Compress
         run: |
-          # 限制 jpg 图片最大为 512KB
-          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -exec jpegoptim --size=512k {} + || true
-
-      - name: Compress PNGs
-        run: |
-          # 找出大于1M的PNG进行压缩
-          find . -type f -iname "*.png" -size +1M -exec bash -c 'pngquant --ext .png --force --speed 1 "$1" || optipng -o2 "$1"' _ {} \;
+          # 找出所有 jpg/jpeg/png 文件并使用 cwebp 转换
+          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do
+            # 先使用默认画质 80 转换并压缩
+            cwebp -q 80 "$file" -o "${file%.*}.webp"
+            
+            # 检查生成的文件大小 (512KB = 524288 Bytes)
+            size=$(stat -c%s "${file%.*}.webp")
+            if [ $size -gt 524288 ]; then
+               # 如果仍然大于 512KB，尝试强行限制在 512000 Bytes 以下
+               cwebp -size 512000 "$file" -o "${file%.*}.webp"
+            fi
+            
+            # 成功生成 webp 后，删除原来的大图
+            rm -f "$file"
+          done
 
       - name: Commit and Push to master
         run: |
           # 强制基于当前压缩后的结果创建一个新的 master 分支
           git checkout -B master
           git add .
-          git commit -m "Auto compress images to < 1MB [skip ci]" || echo "No changes to commit"
+          git commit -m "Auto convert to WebP (< 512KB) [skip ci]" || echo "No changes to commit"
           git push -f origin master
