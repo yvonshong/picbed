@@ -30,21 +30,26 @@ jobs:
 
       - name: Convert to WebP and Compress
         run: |
-          # 找出所有 jpg/jpeg/png 文件并使用 cwebp 转换
-          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print0 | while IFS= read -r -d '' file; do
+          # 定义处理函数
+          process_image() {
+            local file="$1"
             # 先使用默认画质 20 转换并压缩
-            cwebp -q 20 "$file" -o "${file%.*}.webp"
+            cwebp -q 20 "$file" -o "${file%.*}.webp" -quiet
             
             # 检查生成的文件大小 (128KB =  131072 Bytes)
-            size=$(stat -c%s "${file%.*}.webp")
+            local size=$(stat -c%s "${file%.*}.webp")
             if [ $size -gt 131072 ]; then
                # 如果仍然大于 128KB，尝试强行限制在 128000 Bytes 以下
-               cwebp -size 128000 "$file" -o "${file%.*}.webp"
+               cwebp -size 128000 "$file" -o "${file%.*}.webp" -quiet
             fi
             
             # 成功生成 webp 后，删除原来的大图
             rm -f "$file"
-          done
+          }
+          export -f process_image
+          
+          # 找出所有 jpg/jpeg/png 文件并使用 xargs 并行转换
+          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print0 | xargs -0 -n 1 -P $(nproc) bash -c 'process_image "$@"' _
 
       - name: Commit and Push to master
         run: |
