@@ -73,6 +73,8 @@ jobs:
             "bucket": "$QINIU_BUCKET",
             "overwrite": true,
             "rescan_local": true,
+            "check_exists": true,
+            "check_hash": true,
             "skip_path_prefixes": ".git/,.github/,scripts/",
             "skip_fixed_strings": ".DS_Store,README.md,qupload.conf,qshell-v2.13.0-linux-amd64.tar.gz"
           }
