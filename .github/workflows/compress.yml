@@ -1,0 +1,52 @@
+name: Compress Images
+
+on:
+  push:
+    branches:
+      - raw
+
+permissions:
+  contents: write
+
+jobs:
+  compress-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout raw branch
+        uses: actions/checkout@v4
+        with:
+          ref: raw
+          fetch-depth: 0
+
+      - name: Setup Git User
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Switch to and update master branch
+        run: |
+          # 尝试切换到 master，如果不存在则创建
+          git checkout master || git checkout -b master
+          # 把 raw 的更新合并过来
+          git merge raw --no-edit || true
+
+      - name: Install compression tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jpegoptim pngquant optipng
+
+      - name: Compress JPEGs
+        run: |
+          # 限制 jpg 图片最大为 1024KB (1MB)
+          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -exec jpegoptim --size=1024k {} +
+
+      - name: Compress PNGs
+        run: |
+          # 找出大于1M的PNG进行压缩
+          find . -type f -iname "*.png" -size +1M -exec bash -c 'pngquant --ext .png --force --speed 1 "$1" || optipng -o2 "$1"' _ {} \;
+
+      - name: Commit and Push to master
+        run: |
+          git add -u
+          git commit -m "Auto compress images to < 1MB [skip ci]" || echo "No changes to commit"
+          git push origin master
