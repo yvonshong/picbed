@@ -79,7 +79,7 @@ jobs:
           EOF
           
           # 并发10线程上传到七牛云
-          qshell qupload 10 qupload.conf
+          qshell qupload -c 10 qupload.conf
 
       - name: Commit and Push to master
         run: |
