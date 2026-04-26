@@ -51,37 +51,22 @@ jobs:
           # 找出所有 jpg/jpeg/png 文件并使用 xargs 并行转换
           find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) -print0 | xargs -0 -n 1 -P $(nproc) bash -c 'process_image "$@"' _
 
-      - name: Upload to Qiniu
+      - name: Upload to Cloudflare R2
         env:
-          QINIU_AK: ${{ secrets.QINIU_AK }}
-          QINIU_SK: ${{ secrets.QINIU_SK }}
-          QINIU_BUCKET: ${{ secrets.QINIU_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
-          # 下载七牛云官方命令行工具 qshell
-          wget -q https://devtools.qiniu.com/qshell-v2.13.0-linux-amd64.tar.gz
-          tar -xzf qshell-v2.13.0-linux-amd64.tar.gz
-          sudo mv qshell /usr/local/bin/qshell
-          chmod +x /usr/local/bin/qshell
-          
-          # 鉴权
-          qshell account $QINIU_AK $QINIU_SK "github-actions"
-          
-          # 生成上传配置文件，排除 .git 等非图片目录/文件
-          cat > qupload.conf << EOF
-          {
-            "src_dir": ".",
-            "bucket": "$QINIU_BUCKET",
-            "overwrite": true,
-            "rescan_local": true,
-            "check_exists": true,
-            "check_hash": true,
-            "skip_path_prefixes": ".git/,.github/,scripts/",
-            "skip_fixed_strings": ".DS_Store,README.md,qupload.conf,qshell-v2.13.0-linux-amd64.tar.gz"
-          }
-          EOF
-          
-          # 并发10线程上传到七牛云
-          qshell qupload -c 10 qupload.conf
+          # 使用 aws-cli 同步到 Cloudflare R2，并排除非图片相关的文件及目录
+          aws s3 sync . s3://$R2_BUCKET/ \
+            --endpoint-url https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com \
+            --exclude ".git/*" \
+            --exclude ".github/*" \
+            --exclude "scripts/*" \
+            --exclude ".DS_Store" \
+            --exclude "README.md"
 
       - name: Commit and Push to master
         run: |
