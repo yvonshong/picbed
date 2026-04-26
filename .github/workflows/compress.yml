@@ -35,11 +35,11 @@ jobs:
             # 先使用默认画质 80 转换并压缩
             cwebp -q 80 "$file" -o "${file%.*}.webp"
             
-            # 检查生成的文件大小 (512KB = 524288 Bytes)
+            # 检查生成的文件大小 (256KB = 262144 Bytes)
             size=$(stat -c%s "${file%.*}.webp")
-            if [ $size -gt 524288 ]; then
-               # 如果仍然大于 512KB，尝试强行限制在 512000 Bytes 以下
-               cwebp -size 512000 "$file" -o "${file%.*}.webp"
+            if [ $size -gt 262144 ]; then
+               # 如果仍然大于 256KB，尝试强行限制在 256000 Bytes 以下
+               cwebp -size 256000 "$file" -o "${file%.*}.webp"
             fi
             
             # 成功生成 webp 后，删除原来的大图
@@ -51,5 +51,5 @@ jobs:
           # 强制基于当前压缩后的结果创建一个新的 master 分支
           git checkout -B master
           git add .
-          git commit -m "Auto convert to WebP (< 512KB) [skip ci]" || echo "No changes to commit"
+          git commit -m "Auto convert to WebP (< 256KB) [skip ci]" || echo "No changes to commit"
           git push -f origin master
