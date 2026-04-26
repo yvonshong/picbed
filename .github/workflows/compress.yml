@@ -37,8 +37,8 @@ jobs:
 
       - name: Compress JPEGs
         run: |
-          # 限制 jpg 图片最大为 1024KB (1MB)
-          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -exec jpegoptim --size=1024k {} + || true
+          # 限制 jpg 图片最大为 512KB
+          find . -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) -exec jpegoptim --size=512k {} + || true
 
       - name: Compress PNGs
         run: |
